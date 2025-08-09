@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DapitHosting - Toko Online Anda</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f5; /* Warna latar belakang umum di Shopee */
+        }
+        /* Custom Tailwind Colors (optional, but good for branding) */
+        .shopee-orange {
+            background-color: #ee4d2d; /* Warna oranye khas Shopee */
+        }
+        .text-shopee-orange {
+            color: #ee4d2d;
+        }
+        .shopee-gradient {
+            background: linear-gradient(to right, #ff7137, #ee4d2d);
+        }
+        .shopee-shadow {
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        /* Style untuk kategori yang bisa discroll */
+        .scrollable-categories::-webkit-scrollbar {
+            display: none; /* Sembunyikan scrollbar untuk Chrome, Safari, Opera */
+        }
+        .scrollable-categories {
+            -ms-overflow-style: none;  /* Sembunyikan scrollbar untuk IE dan Edge */
+            scrollbar-width: none;  /* Sembunyikan scrollbar untuk Firefox */
+        }
+
+        /* Styling for modal overlays (used for cart modal and support modal) */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black overlay */
+            z-index: 1000; /* Ensure it's above other content */
+            transition: opacity 0.3s ease-out; /* Smooth fade for overlay */
+        }
+        /* Initial state for hidden modals/overlays */
+        .modal-overlay.hidden {
+            opacity: 0;
+            pointer-events: none; /* Make it unclickable when hidden */
+        }
+        /* Final state when modal/overlay is shown */
+        .modal-overlay.flex {
+            opacity: 1;
+        }
+
+        /* Styling for the product detail page (now full-screen view) */
+        #productDetailView {
+            width: 100%; /* Take full width */
+            height: 100%; /* Take full height */
+            display: flex; /* Use flex to align children (header/body/footer) */
+            flex-direction: column; /* Stack header, content, and footer vertically */
+            position: fixed; /* Make it cover the entire screen */
+            top: 0;
+            left: 0;
+            background-color: #f5f5f5; /* Match body background */
+            z-index: 999; /* Below modal overlay, but above main content */
+            transform: translateX(100%); /* Start off-screen */
+            transition: transform 0.3s ease-out; /* Smooth slide-in transition */
+        }
+
+        #productDetailView.active {
+            transform: translateX(0); /* Slide in */
+        }
+
+        #productDetailView .header-section {
+            background-color: #fff;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            z-index: 10; /* Ensure header is above scrollable content */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        #productDetailView .content-section-wrapper {
+            flex-grow: 1; /* Allow content wrapper to take available space */
+            overflow-y: auto; /* Allow content inside to scroll */
+            padding: 1rem;
+            background-color: #f5f5f5; /* Subtle background for scrollable area */
+        }
+
+        #productDetailView .product-info-card {
+            background-color: #fff;
+            padding: 1.5rem; /* More padding */
+            border-radius: 0.75rem; /* Rounded corners */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Softer shadow */
+            margin-bottom: 1rem; /* Space below card */
+        }
+
+        /* Styling for the cart modal content */
+        #cartModal .modal-content {
+            max-width: 95%; /* Make it wider on mobile */
+            max-height: 95vh; /* Increase max height */
+            width: 100%; /* Take full width on small screens */
+            @media (min-width: 640px) { /* sm breakpoint */
+                max-width: 600px; /* Adjust max-width for larger screens */
+            }
+            @media (min-width: 768px) { /* md breakpoint */
+                max-width: 768px; /* Further adjust for medium screens */
+            }
+            overflow-y: auto; /* Enable scrolling if content is too long */
+            z-index: 1001; /* Ensure it's above the overlay */
+            border-radius: 0.75rem; /* Consistent with other cards */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transform: translateY(-20px); /* Start slightly above for animation */
+            opacity: 0; /* Start invisible */
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out; /* Animation */
+        }
+
+        /* Styling for the All Support modal content */
+        #allSupportModal .modal-content {
+            max-width: 95%;
+            max-height: 95vh;
+            width: 100%;
+            @media (min-width: 640px) {
+                max-width: 400px; /* Adjust for a more focused modal for support */
+            }
+            overflow-y: auto;
+            z-index: 1001;
+            border: 3px solid #ee4d2d; /* Orange border */
+            border-radius: 1rem; /* More rounded */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Stronger shadow */
+            transform: translateY(-20px) scale(0.95); /* Start slightly above and smaller */
+            opacity: 0; /* Start invisible */
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out; /* Animation */
+        }
+
+        /* Animation when modals are visible (flex is applied to their overlay) */
+        #cartModal.flex .modal-content,
+        #allSupportModal.flex .modal-content {
+            transform: translateY(0) scale(1); /* Move to original position and scale */
+            opacity: 1; /* Become fully visible */
+        }
+
+        /* Custom scrollbar for scrollable sections */
+        #productDetailView .content-section-wrapper::-webkit-scrollbar,
+        #cartModal .modal-content::-webkit-scrollbar,
+        #allSupportModal .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #productDetailView .content-section-wrapper::-webkit-scrollbar-track,
+        #cartModal .modal-content::-webkit-scrollbar-track,
+        #allSupportModal .modal-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        #productDetailView .content-section-wrapper::-webkit-scrollbar-thumb,
+        #cartModal .modal-content::-webkit-scrollbar-thumb,
+        #allSupportModal .modal-content::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        #productDetailView .content-section-wrapper::-webkit-scrollbar-thumb:hover,
+        #cartModal .modal-content::-webkit-scrollbar-thumb:hover,
+        #allSupportModal .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header -->
+    <header class="shopee-gradient p-4 text-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto flex items-center justify-between">
+            <!-- Logo/Nama Toko -->
+            <h1 class="text-2xl font-bold flex items-center cursor-pointer">
+                DapitHosting
+                <!-- Blue Checkmark SVG -->
+                <svg class="w-5 h-5 ml-1 text-blue-300" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+            </h1>
+
+            <!-- Search Bar -->
+            <div class="flex-grow mx-4 relative">
+                <input type="text" id="searchInput" placeholder="Cari di DapitHosting..."
+                       class="w-full pl-10 pr-4 py-2 rounded-full bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300 transition-all duration-200">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+            </div>
+
+            <!-- Cart & User Icons -->
+            <div class="flex items-center space-x-4">
+                <div id="cartIcon" class="relative cursor-pointer">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <span id="cartItemCount" class="absolute -top-1 -right-1 bg-white text-shopee-orange rounded-full px-2 py-0.5 text-xs font-bold">0</span>
+                </div>
+                <div class="cursor-pointer">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div id="mainContentView" class="container mx-auto p-2 md:p-4">
+
+        <!-- Kategori Produk -->
+        <section class="bg-white rounded-lg shadow-md my-4 p-4">
+            <h2 class="text-lg font-semibold mb-3 text-gray-800">Kategori</h2>
+            <div class="flex flex-wrap gap-3 scrollable-categories">
+                <!-- Hanya satu kategori: Web Pribadi -->
+                <a href="#" class="flex flex-col items-center p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                    <img src="https://placehold.co/40x40/FF7137/FFFFFF?text=Web+Pribadi" alt="Web Pribadi" class="w-10 h-10 rounded-full mb-1">
+                    <span class="text-xs text-gray-700 text-center">Web Pribadi</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Banner Promosi -->
+        <section class="my-4">
+            <div class="h-40 shopee-gradient rounded-lg flex items-center justify-center text-white text-2xl md:text-3xl font-bold text-center p-4 shopee-shadow">
+                Ingin punya web sendiri? order bos!
+            </div>
+        </section>
+
+        <!-- Bagian Produk -->
+        <section class="my-4">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Produk Kami</h2>
+            <div id="productList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                <!-- Produk akan dimuat di sini oleh JavaScript -->
+            </div>
+        </section>
+
+        <!-- All Support Section -->
+        <section class="my-4">
+            <div class="bg-white rounded-lg shadow-md p-4 flex justify-center items-center">
+                <button id="allSupportBtn" class="shopee-gradient text-white py-3 px-6 rounded-lg font-semibold hover:opacity-90 transition-opacity duration-200">
+                    All Support
+                </button>
+            </div>
+        </section>
+
+    </div><!-- End mainContentView -->
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 py-8 mt-8 text-center text-gray-600 text-sm">
+        <div class="container mx-auto">
+            <p>&copy; 2025 DapitHosting. Hak Cipta Dilindungi.</p>
+            <div class="flex justify-center space-x-4 mt-2">
+                <a href="#" class="hover:underline">Tentang Kami</a>
+                <a href="#" class="hover:underline">Kebijakan Privasi</a>
+                <a href="#" class="hover:underline">Syarat & Ketentuan</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Product Detail Page (Full-screen view) -->
+    <div id="productDetailView" class="hidden">
+        <div class="header-section">
+            <h3 class="text-lg font-semibold text-gray-800">Detail Produk</h3>
+            <button id="closeProductDetailViewBtn" class="text-gray-500 hover:text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="content-section-wrapper">
+            <div class="product-info-card max-w-screen-md mx-auto">
+                <img id="modalProductImage" src="" onerror="this.onerror=null; this.src='https://placehold.co/400x300/F5F5F5/333333?text=Gambar+Tidak+Tersedia';" alt="Product Image" class="w-full max-h-80 object-contain rounded-lg mb-6">
+                
+                <h4 id="modalProductName" class="text-3xl font-bold text-gray-900 mb-2"></h4>
+                <p class="text-base text-gray-500 mb-3 flex items-center">
+                    Toko: DapitHosting
+                    <svg class="w-4 h-4 ml-1 text-blue-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                </p>
+                <p id="modalProductPrice" class="text-4xl font-extrabold text-shopee-orange mb-4"></p>
+                
+                <div class="flex flex-col md:flex-row md:items-center justify-between border-t border-b border-gray-100 py-4 mb-4">
+                    <p id="modalProductRating" class="flex items-center text-sm text-gray-700 mb-2 md:mb-0"></p>
+                    <p id="modalProductLocation" class="text-sm text-gray-700">
+                        <span class="mr-1">🏠</span>
+                    </p>
+                </div>
+                
+                <p id="modalProductDescription" class="text-gray-700 text-base leading-relaxed mb-6"></p>
+
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg mb-6"> <!-- Added mb-6 here -->
+                    <span class="text-gray-700 font-medium text-lg">Kuantitas:</span>
+                    <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                        <button id="decreaseQuantity" class="w-10 h-10 flex items-center justify-center text-gray-600 bg-white hover:bg-gray-100 transition-colors text-xl font-bold rounded-l-lg border-r border-gray-300">-</button>
+                        <input type="number" id="quantityInput" value="1" min="1" class="w-16 h-10 text-center text-gray-800 text-lg font-semibold outline-none border-none bg-white">
+                        <button id="increaseQuantity" class="w-10 h-10 flex items-center justify-center text-gray-600 bg-white hover:bg-gray-100 transition-colors text-xl font-bold rounded-r-lg border-l border-gray-300">+</button>
+                    </div>
+                </div>
+
+                <!-- Action Buttons - MOVED UP HERE -->
+                <div class="flex space-x-2">
+                    <button id="addToCartProductViewBtn" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors duration-200">
+                        Tambah ke Keranjang
+                    </button>
+                    <button id="buyNowProductViewBtn" class="flex-1 shopee-gradient text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity duration-200">
+                        Beli Sekarang
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cartModal" class="fixed inset-0 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-lg shadow-xl modal-content transform transition-all">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-800">Keranjang Belanja</h3>
+                <button id="closeCartModalBtn" class="text-gray-500 hover:text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div class="p-4">
+                <div id="cartItemsList" class="mb-4 space-y-3">
+                    <!-- Cart items will be loaded here -->
+                </div>
+                <div id="cartTotal" class="text-right text-lg font-bold text-gray-800 mb-4">
+                    Total: Rp0
+                </div>
+                <button id="checkoutCartBtn" class="shopee-gradient text-white py-3 w-full rounded-lg font-semibold hover:opacity-90 transition-opacity duration-200">
+                    Checkout via WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Support Modal -->
+    <div id="allSupportModal" class="fixed inset-0 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-lg shadow-xl modal-content transform transition-all p-6 text-center">
+            <div class="flex justify-end mb-4">
+                <button id="closeAllSupportModalBtn" class="text-gray-500 hover:text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <h3 class="text-2xl font-extrabold text-shopee-orange mb-6">Dukungan Kami</h3>
+            <ul class="text-xl text-gray-700 space-y-3 font-semibold">
+                <li>1. Allah</li>
+                <li>2. Orang tua</li>
+                <li>3. All friends</li>
+            </ul>
+        </div>
+    </div>
+
+
+    <script>
+        const SHOPEE_PHONE_NUMBER = '6285816148963'; // Nomor WhatsApp dengan kode negara
+
+        // Data Produk Mockup
+        const products = [
+            {
+                id: 1,
+                name: "WEB E-Commerce",
+                price: 13000,
+                rating: 5.0,
+                reviews: 10,
+                location: "Online",
+                image: "https://files.catbox.moe/suwmqk.jpg",
+                description: "Layanan pembuatan website E-Commerce profesional untuk kebutuhan bisnis Anda. Desain modern, responsif, fitur lengkap (keranjang belanja, pembayaran, manajemen produk), dan dukungan teknis. Solusi terbaik untuk membawa bisnis Anda ke ranah digital!"
+            },
+            {
+                id: 2,
+                name: "WEB PAYMENT",
+                price: 11000,
+                rating: 4.9,
+                reviews: 8,
+                location: "Online",
+                image: "https://files.catbox.moe/tnd7jw.jpg",
+                description: "Integrasi sistem pembayaran online yang aman dan efisien untuk website Anda. Mendukung berbagai metode pembayaran populer (bank transfer, e-wallet, kartu kredit) untuk kenyamanan pelanggan. Solusi cepat dan handal untuk transaksi digital."
+            },
+            {
+                id: 3,
+                name: "WEB PRODUK",
+                price: 11000,
+                rating: 4.7,
+                reviews: 12,
+                location: "Online",
+                image: "https://files.catbox.moe/j6z03v.jpg",
+                description: "Jasa pembuatan website katalog produk interaktif dan menarik. Tampilkan produk Anda dengan detail, galeri gambar, dan fitur pencarian canggih. Ideal untuk bisnis yang ingin memamerkan produk tanpa fungsi transaksi langsung."
+            }
+        ];
+
+        // Elemen DOM untuk tampilan utama
+        const mainContentView = document.getElementById('mainContentView');
+        const productListDiv = document.getElementById('productList');
+        const searchInput = document.getElementById('searchInput');
+
+        // Elemen DOM untuk tampilan detail produk (sekarang halaman penuh)
+        const productDetailView = document.getElementById('productDetailView');
+        const closeProductDetailViewBtn = document.getElementById('closeProductDetailViewBtn');
+        const modalProductName = document.getElementById('modalProductName'); // Nama tetap sama dari sebelumnya
+        const modalProductImage = document.getElementById('modalProductImage');
+        const modalProductPrice = document.getElementById('modalProductPrice');
+        const modalProductRating = document.getElementById('modalProductRating');
+        const modalProductLocation = document.getElementById('modalProductLocation');
+        const modalProductDescription = document.getElementById('modalProductDescription');
+        const quantityInput = document.getElementById('quantityInput');
+        const decreaseQuantityBtn = document.getElementById('decreaseQuantity');
+        const increaseQuantityBtn = document.getElementById('increaseQuantity');
+        const addToCartProductViewBtn = document.getElementById('addToCartProductViewBtn'); // Diubah namanya
+        const buyNowProductViewBtn = document.getElementById('buyNowProductViewBtn'); // Diubah namanya
+
+        // Elemen DOM untuk modal keranjang
+        const cartIcon = document.getElementById('cartIcon');
+        const cartItemCount = document.getElementById('cartItemCount');
+        const cartModal = document.getElementById('cartModal');
+        const closeCartModalBtn = document.getElementById('closeCartModalBtn');
+        const cartItemsList = document.getElementById('cartItemsList');
+        const cartTotal = document.getElementById('cartTotal');
+        const checkoutCartBtn = document.getElementById('checkoutCartBtn');
+
+        // Elemen DOM untuk modal All Support
+        const allSupportBtn = document.getElementById('allSupportBtn');
+        const allSupportModal = document.getElementById('allSupportModal');
+        const closeAllSupportModalBtn = document.getElementById('closeAllSupportModalBtn');
+
+
+        let cartItems = []; // Array untuk menyimpan item di keranjang
+
+        // --- Utility Functions ---
+
+        // Fungsi untuk memformat harga menjadi Rupiah
+        function formatRupiah(number) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(number);
+        }
+
+        // Fungsi untuk menghasilkan bintang rating
+        function getRatingStars(rating) {
+            let stars = '';
+            for (let i = 0; i < Math.floor(rating); i++) {
+                stars += '<svg class="w-4 h-4 text-yellow-400 inline-block" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.683-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.565-1.83-.197-1.54-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z"></path></svg>';
+            }
+            // Tambahkan bintang setengah jika ada desimal
+            if (rating % 1 !== 0) {
+                stars += '<svg class="w-4 h-4 text-yellow-400 inline-block" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.683-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.565-1.83-.197-1.54-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z" opacity=".5"></path></svg>';
+            }
+            return stars;
+        }
+
+        // Fungsi untuk mengupdate jumlah item di keranjang pada header
+        function updateCartCount() {
+            const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+            cartItemCount.textContent = totalItems;
+            console.log("Jumlah item di keranjang diperbarui:", totalItems); // Debug log
+        }
+
+        // --- View Management (Show/Hide different "pages" and modals) ---
+        function showView(viewId) {
+            // Hide all main views/pages first
+            mainContentView.classList.add('hidden');
+            productDetailView.classList.remove('active');
+            productDetailView.classList.add('hidden'); // Ensure it's hidden before new transition
+            
+            // Hide all modals (apply hidden and remove flex)
+            cartModal.classList.add('hidden');
+            cartModal.classList.remove('flex');
+            allSupportModal.classList.add('hidden');
+            allSupportModal.classList.remove('flex');
+
+
+            // Show the requested view
+            if (viewId === 'mainContentView') {
+                mainContentView.classList.remove('hidden');
+            } else if (viewId === 'productDetailView') {
+                productDetailView.classList.remove('hidden');
+                // Use a small timeout to allow display change before transition starts
+                setTimeout(() => { productDetailView.classList.add('active'); }, 10);
+            } else if (viewId === 'cartModal') {
+                cartModal.classList.remove('hidden');
+                cartModal.classList.add('flex'); // This triggers the modal's entry animation
+            } else if (viewId === 'allSupportModal') {
+                allSupportModal.classList.remove('hidden');
+                allSupportModal.classList.add('flex'); // This triggers the modal's entry animation
+            }
+        }
+
+        // --- Product Display ---
+
+        // Fungsi untuk menampilkan produk di halaman utama
+        function displayProducts(productsToDisplay) {
+            productListDiv.innerHTML = ''; // Kosongkan daftar produk sebelum menambahkan yang baru
+            if (productsToDisplay.length === 0) {
+                productListDiv.innerHTML = '<p class="col-span-full text-center text-gray-500">Tidak ada produk yang ditemukan.</p>';
+                return;
+            }
+
+            productsToDisplay.forEach(product => {
+                const productCard = `
+                    <div class="product-card bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden relative group">
+                        <!-- Gambar Produk -->
+                        <img src="${product.image}" onerror="this.onerror=null; this.src='https://placehold.co/300x300/F5F5F5/333333?text=Gambar+Tidak+Tersedia';" alt="${product.name}" class="w-full h-40 object-cover rounded-t-lg">
+                        
+                        <!-- Konten Produk -->
+                        <div class="p-3">
+                            <!-- Nama Produk -->
+                            <h3 class="text-sm font-medium text-gray-800 mb-1 leading-tight line-clamp-2" title="${product.name}">${product.name}</h3>
+                            
+                            <!-- Harga -->
+                            <p class="text-md font-bold text-shopee-orange mb-2">${formatRupiah(product.price)}</p>
+                            
+                            <!-- Rating -->
+                            <div class="flex items-center text-xs text-gray-500 mb-1">
+                                ${getRatingStars(product.rating)}
+                                (${product.reviews})
+                            </div>
+                            
+                            <!-- Lokasi -->
+                            <p class="text-xs text-gray-500 truncate"><span class="mr-1">🏠</span>${product.location}</p>
+
+                            <!-- Tombol Aksi -->
+                            <div class="flex items-center justify-between mt-3">
+                                <button data-product-id="${product.id}" class="buy-now-btn flex-1 shopee-gradient text-white py-2 px-3 rounded-md text-sm font-semibold hover:opacity-90 transition-opacity duration-200 mr-2">
+                                    Beli Sekarang
+                                </button>
+                                <button data-product-id="${product.id}" class="add-to-cart-card-btn p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors duration-200">
+                                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                productListDiv.innerHTML += productCard;
+            });
+
+            // Re-attach event listeners for buy now buttons (direct click)
+            document.querySelectorAll('.buy-now-btn').forEach(button => {
+                button.addEventListener('click', openProductDetailView);
+            });
+            
+            // Event delegation for 'add-to-cart-card-btn'
+            // This listener is attached only once to the parent container
+            // and handles clicks on any .add-to-cart-card-btn descendants.
+            // This replaces the previous forEach loop for 'add-to-cart-card-btn'.
+            // Remove previous listener to avoid duplicates if displayProducts is called multiple times
+            productListDiv.removeEventListener('click', handleProductListClick);
+            productListDiv.addEventListener('click', handleProductListClick);
+        }
+
+        function handleProductListClick(event) {
+            const addToCartButton = event.target.closest('.add-to-cart-card-btn');
+            if (addToCartButton) {
+                const productId = parseInt(addToCartButton.dataset.productId);
+                const product = products.find(p => p.id === productId);
+                console.log("Tombol 'Tambah ke Keranjang' (delegasi) diklik untuk produk:", product);
+                if (product) {
+                    addToCart(product, 1);
+                    // Add a quick visual feedback here if desired (e.g., a small "Added to cart!" popup)
+                } else {
+                    console.error("Produk tidak ditemukan untuk ID (delegasi):", productId);
+                }
+            }
+        }
+
+
+        // Tampilkan semua produk saat halaman pertama kali dimuat
+        displayProducts(products);
+        updateCartCount(); // Inisialisasi hitungan keranjang
+
+        // --- Search Functionality ---
+        searchInput.addEventListener('keyup', (event) => {
+            const searchTerm = event.target.value.toLowerCase();
+            const filteredProducts = products.filter(product =>
+                product.name.toLowerCase().includes(searchTerm) ||
+                product.location.toLowerCase().includes(searchTerm)
+            );
+            displayProducts(filteredProducts);
+        });
+
+        // --- Product Detail View (formerly Modal) Functionality ---
+
+        // Event listener untuk menutup tampilan detail produk
+        closeProductDetailViewBtn.addEventListener('click', () => {
+            showView('mainContentView');
+            quantityInput.value = 1; // Reset quantity to 1 when closing
+        });
+
+        // Fungsi untuk membuka tampilan detail produk dan mengisi informasinya
+        function openProductDetailView(event) {
+            const productId = parseInt(event.currentTarget.dataset.productId);
+            const product = products.find(p => p.id === productId);
+
+            if (product) {
+                modalProductName.textContent = product.name;
+                modalProductImage.src = product.image;
+                modalProductPrice.textContent = formatRupiah(product.price);
+                modalProductRating.innerHTML = `${getRatingStars(product.rating)} (${product.reviews} Ulasan)`;
+                modalProductLocation.textContent = `Lokasi: ${product.location}`;
+                modalProductDescription.textContent = product.description;
+
+                // Simpan ID produk ke tombol "Tambah ke Keranjang" dan "Beli Sekarang"
+                addToCartProductViewBtn.dataset.productId = product.id;
+                buyNowProductViewBtn.dataset.productId = product.id; // Untuk penggunaan WhatsApp
+
+                showView('productDetailView');
+            } else {
+                console.error("Produk tidak ditemukan saat mencoba membuka tampilan detail untuk ID:", productId);
+            }
+        }
+
+        // Mengurangi kuantitas di tampilan detail produk
+        decreaseQuantityBtn.addEventListener('click', () => {
+            let currentQuantity = parseInt(quantityInput.value);
+            if (currentQuantity > 1) {
+                quantityInput.value = currentQuantity - 1;
+            }
+        });
+
+        // Menambah kuantitas di tampilan detail produk
+        increaseQuantityBtn.addEventListener('click', () => {
+            let currentQuantity = parseInt(quantityInput.value);
+            quantityInput.value = currentQuantity + 1;
+        });
+
+        // Event listener untuk tombol "Tambah ke Keranjang" di tampilan detail produk
+        addToCartProductViewBtn.addEventListener('click', (event) => {
+            const productId = parseInt(event.currentTarget.dataset.productId);
+            const product = products.find(p => p.id === productId);
+            const quantity = parseInt(quantityInput.value);
+            console.log("Tombol 'Tambah ke Keranjang' dari tampilan detail diklik untuk:", product, "kuantitas:", quantity);
+            if (product && quantity > 0) {
+                addToCart(product, quantity);
+                showView('mainContentView'); // Kembali ke halaman utama setelah menambah
+                quantityInput.value = 1; // Reset quantity
+            } else {
+                console.error("Gagal menambahkan ke keranjang dari tampilan detail. Produk:", product, "Kuantitas:", quantity);
+            }
+        });
+
+        // Event listener untuk tombol "Beli Sekarang" di tampilan detail produk (mengarah ke WhatsApp)
+        buyNowProductViewBtn.addEventListener('click', (event) => {
+            const productId = parseInt(event.currentTarget.dataset.productId);
+            const product = products.find(p => p.id === productId);
+            if (product) {
+                const message = `Hallo kak!, saya ingin membeli *${product.name}* apakah bisa? mohon bantuannya untuk langkah selanjutnya.`;
+                const whatsappUrl = `https://wa.me/${SHOPEE_PHONE_NUMBER}?text=${encodeURIComponent(message)}`;
+                window.open(whatsappUrl, '_blank');
+                showView('mainContentView'); // Kembali ke halaman utama setelah mengarahkan
+                quantityInput.value = 1; // Reset quantity
+            } else {
+                console.error("Produk tidak ditemukan saat mencoba membeli sekarang dari tampilan detail untuk ID:", productId);
+            }
+        });
+
+        // --- Cart Modal Functionality ---
+
+        // Event listener untuk ikon keranjang di header
+        cartIcon.addEventListener('click', openCartModal);
+
+        // Event listener untuk menutup modal keranjang
+        closeCartModalBtn.addEventListener('click', () => {
+            showView('mainContentView'); // Kembali ke tampilan utama setelah menutup keranjang
+        });
+
+        // Event listener untuk menutup modal keranjang saat klik di luar area modal
+        cartModal.addEventListener('click', (event) => {
+            if (event.target === cartModal) {
+                showView('mainContentView'); // Kembali ke tampilan utama
+            }
+        });
+
+        // Fungsi untuk membuka modal keranjang dan menampilkan isinya
+        function openCartModal() {
+            console.log("Membuka modal keranjang. Item keranjang saat ini:", cartItems);
+            cartItemsList.innerHTML = ''; // Kosongkan daftar item di keranjang
+            let totalCartPrice = 0;
+
+            if (cartItems.length === 0) {
+                cartItemsList.innerHTML = '<p class="text-center text-gray-500">Keranjang Anda kosong.</p>';
+            } else {
+                cartItems.forEach(item => {
+                    const itemSubtotal = item.price * item.quantity;
+                    totalCartPrice += itemSubtotal;
+                    const cartItemHtml = `
+                        <div class="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
+                            <img src="${item.image}" onerror="this.onerror=null; this.src='https://placehold.co/64x64/F5F5F5/333333?text=Gambar';" alt="${item.name}" class="w-16 h-16 object-cover rounded-md">
+                            <div class="flex-1">
+                                <h4 class="text-sm font-semibold text-gray-800">${item.name}</h4>
+                                <p class="text-xs text-gray-600">Kuantitas: ${item.quantity}</p>
+                                <p class="text-sm font-bold text-shopee-orange">${formatRupiah(itemSubtotal)}</p>
+                            </div>
+                            <!-- Anda bisa menambahkan tombol hapus item di sini jika diinginkan -->
+                            <!-- <button data-item-id="${item.id}" class="remove-from-cart-btn text-red-500 hover:text-red-700">Hapus</button> -->
+                        </div>
+                    `;
+                    cartItemsList.innerHTML += cartItemHtml;
+                });
+            }
+
+            cartTotal.textContent = `Total: ${formatRupiah(totalCartPrice)}`;
+            showView('cartModal'); // Menampilkan modal keranjang
+        }
+
+        // Event listener untuk tombol "Checkout via WhatsApp" di modal keranjang
+        checkoutCartBtn.addEventListener('click', () => {
+            if (cartItems.length === 0) {
+                console.log("Keranjang kosong, tidak bisa checkout.");
+                return;
+            }
+
+            let checkoutMessage = "Hallo kak!, saya ingin order beberapa produk:\n\n";
+            let totalOrderPrice = 0;
+
+            cartItems.forEach((item, index) => {
+                const itemSubtotal = item.price * item.quantity;
+                totalOrderPrice += itemSubtotal;
+                checkoutMessage += `${index + 1}. *${item.name}* (${item.quantity}x) - ${formatRupiah(itemSubtotal)}\n`;
+            });
+
+            checkoutMessage += `\nTotal Belanja: *${formatRupiah(totalOrderPrice)}*\n\n`;
+            checkoutMessage += "Mohon bantuannya untuk langkah selanjutnya.";
+
+            const whatsappUrl = `https://wa.me/${SHOPEE_PHONE_NUMBER}?text=${encodeURIComponent(checkoutMessage)}`;
+            window.open(whatsappUrl, '_blank');
+            showView('mainContentView'); // Kembali ke tampilan utama
+        });
+
+        // --- All Support Modal Functionality ---
+        allSupportBtn.addEventListener('click', () => {
+            showView('allSupportModal');
+        });
+
+        closeAllSupportModalBtn.addEventListener('click', () => {
+            showView('mainContentView');
+        });
+
+        // Juga tutup modal jika klik di luar area modal dukungan
+        allSupportModal.addEventListener('click', (event) => {
+            if (event.target === allSupportModal) {
+                showView('mainContentView');
+            }
+        });
+
+    </script>
+</body>
+</html>
+
